@@ -287,7 +287,9 @@ function render(){
 }
 
 /* ------------------------------------------------------------------ checking */
-var AMERICAN = {
+/* prototype-free, so that a word like "constructor" is not a dictionary hit */
+function dict(o){ var d = Object.create(null); Object.keys(o).forEach(function(k){ d[k] = o[k]; }); return d; }
+var AMERICAN = dict({
   color:'colour', colors:'colours', colored:'coloured', colorful:'colourful', favorite:'favourite',
   favor:'favour', honor:'honour', honored:'honoured', labor:'labour', neighbor:'neighbour',
   neighbors:'neighbours', behavior:'behaviour', flavor:'flavour', harbor:'harbour', humor:'humour',
@@ -302,13 +304,13 @@ var AMERICAN = {
   traveled:'travelled', traveling:'travelling', canceled:'cancelled', modeling:'modelling',
   fulfill:'fulfil', enroll:'enrol', skillful:'skilful', willful:'wilful', marvelous:'marvellous',
   aluminum:'aluminium', practicing:'practising'
-};
+});
 /* correct English in their own right, so only ever mentioned, never changed */
-var AMBIGUOUS = {
+var AMBIGUOUS = dict({
   check:'cheque', program:'programme', tire:'tyre', tires:'tyres', license:'licence',
   judgment:'judgement', mold:'mould', practice:'practise', gray:'grey'
-};
-var TYPOS = {
+});
+var TYPOS = dict({
   teh:'the', recieve:'receive', recieved:'received', seperate:'separate', seperately:'separately',
   occured:'occurred', occuring:'occurring', definately:'definitely', wich:'which', alot:'a lot',
   becuase:'because', thier:'their', adress:'address', calender:'calendar', grammer:'grammar',
@@ -321,9 +323,13 @@ var TYPOS = {
   quiz2:'quiz', teacherss:'teachers', childrens:'children', furnitures:'furniture',
   informations:'information', advices:'advice', equipments:'equipment', homeworks:'homework',
   discuss_about:'discuss', cousin_brother:'cousin'
-};
+});
 
 function words(text){ return text.match(/[A-Za-z][A-Za-z'’-]*/g) || []; }
+
+/* a space before punctuation is only wrong after a word, a digit or a closing
+   mark — "2 + 3 = ?" and "____ ?" are how sums and blanks are written */
+var BEFORE_PUNCT = /[A-Za-z0-9)\]'’”"]\s+[.,;:?!]/;
 
 function check(){
   var src = el('body').value;
@@ -343,7 +349,7 @@ function check(){
     if(it.kind === 'blank') return;
     var t = it.raw;
 
-    if(/\s+[.,;:?!]/.test(t))          add('err', it.line, 'Space before punctuation — "' + snip(t, /\s+[.,;:?!]/) + '"', true);
+    if(BEFORE_PUNCT.test(t))           add('err', it.line, 'Space before punctuation — "' + snip(t, BEFORE_PUNCT) + '"', true);
     if(/[.,;:?!][A-Za-z]/.test(t))     add('err', it.line, 'Missing space after punctuation — "' + snip(t, /[.,;:?!][A-Za-z]/) + '"', true);
     if(/\S {2,}\S/.test(t))            add('err', it.line, 'Two or more spaces in a row', true);
     if(/['"]/.test(t))                 add('warn', it.line, 'Straight quotes / apostrophes — the rest of a printed paper should use curly ones', true);
@@ -396,9 +402,10 @@ function check(){
       add('err', q.line, 'Numbering jumps: ' + (q.num > expect ? 'question ' + expect + ' is missing' : 'goes back to ' + q.num) + ' (found ' + q.num + ', expected ' + expect + ')', false);
     expect = q.num + 1;
   });
-  if(qs.length && /^Q/i.test(qs[0].raw.trim())){
-    var mixed = qs.some(function(q){ return !/^Q/i.test(q.raw.trim()); });
-    if(mixed) add('warn', null, 'Question numbers are written both as "Q1." and "1." — pick one style', false);
+  if(qs.length){
+    var qStyle = qs.filter(function(q){ return /^Q/i.test(q.raw.trim()); }).length;
+    if(qStyle && qStyle !== qs.length)
+      add('warn', null, 'Question numbers are written both as "Q1." and "1." — pick one style', false);
   }
 
   /* --- marks --- */
@@ -527,9 +534,9 @@ function autofix(){
     var t = line;
     var keepWords = isSpellingLine(t);
     t = t.replace(/[ \t]+$/, '');
-    t = t.replace(/\s+([.,;:?!])/g, '$1');
+    t = t.replace(/([A-Za-z0-9)\]'’”"])\s+([.,;:?!])/g, '$1$2');
     t = t.replace(/([.,;:?!])([A-Za-z])/g, '$1 $2');
-    t = t.replace(/(\S) {2,}(\S)/g, '$1 $2');
+    t = t.replace(/(\S) {2,}(?=\S)/g, '$1 ');
     t = t.replace(/\b([A-Za-z]+)'([A-Za-z])/g, '$1\u2019$2');
     t = t.replace(/"([^"]*)"/g, '\u201C$1\u201D');
     t = t.replace(/'/g, '\u2019');
