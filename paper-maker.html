@@ -281,7 +281,7 @@ function render(){
   el('sheet').innerHTML = h;
 
   var qs = items.filter(function(i){ return i.kind === 'q'; });
-  var total = items.reduce(function(a,i){ return a + (i.marks || 0); }, 0);
+  var total = effectiveMarks(items).reduce(function(a,m){ return a + m; }, 0);
   el('count').textContent = qs.length + ' question' + (qs.length === 1 ? '' : 's') +
       ' · marks in the paper: ' + (total || 0);
 }
@@ -297,11 +297,16 @@ var AMERICAN = {
   realized:'realised', recognize:'recognise', recognized:'recognised', apologize:'apologise',
   apologized:'apologised', memorize:'memorise', summarize:'summarise', analyze:'analyse',
   analyzed:'analysed', analyzing:'analysing', emphasize:'emphasise', criticize:'criticise',
-  civilization:'civilisation', jewelry:'jewellery', gray:'grey', plow:'plough', catalog:'catalogue',
-  dialog:'dialogue', program:'programme', defense:'defence', offense:'offence', license:'licence',
+  civilization:'civilisation', jewelry:'jewellery', plow:'plough', catalog:'catalogue',
+  dialog:'dialogue', defense:'defence', offense:'offence',
   traveled:'travelled', traveling:'travelling', canceled:'cancelled', modeling:'modelling',
   fulfill:'fulfil', enroll:'enrol', skillful:'skilful', willful:'wilful', marvelous:'marvellous',
-  tires:'tyres', tire:'tyre', check:'cheque', aluminum:'aluminium', mold:'mould', practicing:'practising'
+  aluminum:'aluminium', practicing:'practising'
+};
+/* correct English in their own right, so only ever mentioned, never changed */
+var AMBIGUOUS = {
+  check:'cheque', program:'programme', tire:'tyre', tires:'tyres', license:'licence',
+  judgment:'judgement', mold:'mould', practice:'practise', gray:'grey'
 };
 var TYPOS = {
   teh:'the', recieve:'receive', recieved:'received', seperate:'separate', seperately:'separately',
@@ -309,7 +314,7 @@ var TYPOS = {
   becuase:'because', thier:'their', adress:'address', calender:'calendar', grammer:'grammar',
   tommorow:'tomorrow', untill:'until', sucess:'success', begining:'beginning', neccessary:'necessary',
   necesary:'necessary', enviroment:'environment', goverment:'government', truely:'truly',
-  arguement:'argument', judgment:'judgement', publically:'publicly', accomodate:'accommodate',
+  arguement:'argument', publically:'publicly', accomodate:'accommodate',
   embarass:'embarrass', existance:'existence', independant:'independent', maintainance:'maintenance',
   occassion:'occasion', posession:'possession', priviledge:'privilege', reccommend:'recommend',
   refered:'referred', rythm:'rhythm', suprise:'surprise', writting:'writing', wether:'whether',
@@ -348,9 +353,9 @@ function check(){
       var body = it.text;
       if(body && /^[a-z]/.test(body))  add('err', it.line, 'Question starts with a small letter — "' + body.slice(0,28) + '…"', true);
       var exercise = /punctuat|capital letter/i.test(body) || (/\(a\)/i.test(body) && /\(b\)/i.test(body));
-      if(body && !exercise && !/[.?!:;]$/.test(body) && !/[-–—_)]$/.test(body))
+      if(body && !exercise && !/[.?!:;।]$/.test(body) && !/[-–—_)]$/.test(body))
                                         add('warn', it.line, 'No full stop or question mark at the end — "…' + body.slice(-26) + '"', false);
-      if(body && /^(what|why|how|when|where|who|whose|do|does|did|is|are|can|will|would)\b/i.test(body) && /\.$/.test(body))
+      if(body && looksLikeQuestion(body) && /\.$/.test(body))
                                         add('warn', it.line, 'Reads like a question but ends with a full stop — should it be a question mark?', false);
       if(body && words(body).length > 45)
                                         add('warn', it.line, 'Very long question (' + words(body).length + ' words) — consider splitting it', false);
@@ -368,6 +373,9 @@ function check(){
       else if(el('british').checked && AMERICAN[low])
         add('warn', it.line, 'American spelling: "' + w + '" → "' + AMERICAN[low] + '"' +
             (spellQ ? ' — left alone, this line looks like a spelling question' : ''), !spellQ);
+      else if(el('british').checked && AMBIGUOUS[low])
+        add('warn', it.line, '"' + w + '" is correct English and is left as typed — but if you mean the ' +
+            'other sense, it is "' + AMBIGUOUS[low] + '"', false);
     });
 
     /* MCQ options */
@@ -399,7 +407,14 @@ function check(){
   if(qs.length && without.length && withM.length)
     add('err', without[0].line, without.length + ' question' + (without.length === 1 ? ' has' : 's have') +
         ' no marks in brackets (first one on line ' + without[0].line + ')', false);
-  var total = items.reduce(function(a,i){ return a + (i.marks || 0); }, 0);
+  var eff = effectiveMarks(items);
+  var total = eff.reduce(function(a,m){ return a + m; }, 0);
+  qs.forEach(function(q){
+    var p = partsMarks(items, q);
+    if(q.marks !== null && p.any && Math.abs(p.sum - q.marks) > 0.001)
+      add('warn', q.line, 'Question ' + q.num + ' is marked ' + q.marks +
+          ' but its parts add up to ' + p.sum + ' — only the ' + q.marks + ' is counted in the total', false);
+  });
   var mx = parseFloat(el('max').value);
   if(!isNaN(mx) && total){
     if(Math.abs(total - mx) > 0.001)
@@ -413,7 +428,7 @@ function check(){
     var from = items.indexOf(s), to = items.length;
     for(var j = from + 1; j < items.length; j++){ if(items[j].kind === 'section'){ to = j; break; } }
     var got = 0;
-    for(var k = from + 1; k < to; k++) got += (items[k].marks || 0);
+    for(var k = from + 1; k < to; k++) got += eff[k];
     if(got && Math.abs(got - stated) > 0.001)
       add('err', s.line, '"' + s.text.slice(0,42) + '" says ' + stated + ' marks but its questions total ' + got, false);
   });
@@ -438,15 +453,41 @@ function check(){
   report(issues, items);
 }
 
-/* a question whose own marks sit on its (a)/(b)/(c) parts instead */
-function partsCarryMarks(items, q){
-  var i = items.indexOf(q), any = false;
+/* the marks written on a question's own (a)/(b)/(c) parts */
+function partsMarks(items, q){
+  var i = items.indexOf(q), any = false, sum = 0;
   for(var j = i + 1; j < items.length; j++){
-    if(items[j].kind === 'sub'){ if(items[j].marks !== null) any = true; continue; }
+    if(items[j].kind === 'sub'){
+      if(items[j].marks !== null){ any = true; sum += items[j].marks; }
+      continue;
+    }
     if(items[j].kind === 'blank') continue;
     break;
   }
-  return any;
+  return { any:any, sum:sum };
+}
+function partsCarryMarks(items, q){ return partsMarks(items, q).any; }
+
+/* what each line adds to the total: a question marked [6] whose parts split
+   that 6 must not be counted twice, so its parts then count as nothing */
+function effectiveMarks(items){
+  var eff = items.map(function(i){ return i.marks || 0; });
+  items.forEach(function(it, i){
+    if(it.kind !== 'q' || it.marks === null) return;
+    for(var j = i + 1; j < items.length; j++){
+      if(items[j].kind === 'sub'){ eff[j] = 0; continue; }
+      if(items[j].kind === 'blank') continue;
+      break;
+    }
+  });
+  return eff;
+}
+
+/* wh-questions always; an auxiliary only when a subject follows it, so that an
+   instruction like "Do as directed." is not mistaken for a question */
+function looksLikeQuestion(body){
+  if(/^(what|why|how|when|where|who|whose|which)\b/i.test(body)) return true;
+  return /^(do|does|did|is|are|was|were|can|could|will|would|has|have|had)\s+(i|you|he|she|it|we|they|the|this|that|these|those|any|your|his|her|their|there)\b/i.test(body);
 }
 
 /* "Choose the correct spelling" style lines hold deliberate misspellings */
@@ -495,7 +536,7 @@ function autofix(){
     /* misspellings + American spellings, keeping the original capitalisation */
     if(!keepWords) t = t.replace(/[A-Za-z][A-Za-z'’-]*/g, function(w){
       var low = w.toLowerCase();
-      var to = TYPOS[low] || (el('british').checked ? AMERICAN[low] : null);
+      var to = TYPOS[low] || (el('british').checked ? AMERICAN[low] : null);   /* AMBIGUOUS words are never rewritten */
       if(!to) return w;
       if(w[0] === w[0].toUpperCase()) return to[0].toUpperCase() + to.slice(1);
       return to;
@@ -551,7 +592,7 @@ el('clear').addEventListener('click', function(){
   el('body').value = ''; save(); render(); el('report').innerHTML = '';
 });
 
-if(!load() || !el('body').value.trim()) el('body').value = SAMPLE;
+if(!load()) el('body').value = SAMPLE;   /* a cleared paper stays cleared */
 render();
 </script>
 </body>
