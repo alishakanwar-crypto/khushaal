@@ -450,7 +450,10 @@ var TYPOS = dict({
   discuss_about:'discuss', cousin_brother:'cousin'
 });
 
+/* only Latin words, because the dictionaries that use this list are English */
 function words(text){ return text.match(/[A-Za-z][A-Za-z'’-]*/g) || []; }
+/* how long a line is, in any script */
+function wordCount(text){ return (text.match(/[^\s]+/g) || []).length; }
 
 /* a space before punctuation is only wrong after a word, a digit or a closing
    mark — "2 + 3 = ?" and "____ ?" are how sums and blanks are written */
@@ -493,8 +496,8 @@ function check(){
                                         add('warn', it.line, 'No full stop or question mark at the end — "…' + body.slice(-26) + '"', false);
       if(body && !hindi() && looksLikeQuestion(body) && /\.$/.test(body))
                                         add('warn', it.line, 'Reads like a question but ends with a full stop — should it be a question mark?', false);
-      if(body && words(body).length > 45)
-                                        add('warn', it.line, 'Very long question (' + words(body).length + ' words) — consider splitting it', false);
+      if(body && wordCount(body) > 45)
+                                        add('warn', it.line, 'Very long question (' + wordCount(body) + ' words) — consider splitting it', false);
       /* the blanks of a "fill in the blanks" question are usually on the lines under it */
       if(/\bfill in the blank/i.test(body) && !hasBlankBelow(items, idx))
                                         add('warn', it.line, '"Fill in the blank" but there is no blank (____) anywhere in the question', false);
@@ -576,7 +579,8 @@ function check(){
   var norm = {};
   qs.concat(items.filter(function(i){ return i.kind === 'sub'; })).forEach(function(q){
     if(!q.text) return;
-    var k = q.text.toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+    /* letters of any script, so that two identical Hindi questions still match */
+    var k = q.text.toLowerCase().replace(/[^\p{L}\p{N} ]/gu,'').replace(/\s+/g,' ').trim();
     if(k.length < 12) return;
     if(norm[k] !== undefined) add('err', q.line, 'Same question appears twice (also on line ' + norm[k] + ')', false);
     else norm[k] = q.line;
@@ -633,7 +637,7 @@ function nextKind(items, idx){
 
 /* "a. lawn -", "b. Plural of ‘mouse’": a word being asked about, not a sentence */
 function isWordItem(body){
-  return words(body).length <= 4 || /['‘’"“”]\s*$/.test(body);
+  return wordCount(body) <= 4 || /['‘’"“”]\s*$/.test(body);
 }
 
 function hasBlankBelow(items, idx){
@@ -833,8 +837,14 @@ el('fix').addEventListener('click', autofix);
 el('print').addEventListener('click', function(){ window.print(); });
 el('sample').addEventListener('click', function(){
   el('body').value = sampleForLanguage();
-  if(hindi()){ el('subject').value = 'हिंदी'; el('grade').value = 'II'; }
-  else       { el('subject').value = 'ENGLISH'; el('grade').value = 'II'; }
+  if(hindi()){
+    el('subject').value = 'हिंदी';
+    el('instr').value = 'कार्यपत्रक ध्यान से पढ़िए।\nउत्तर दिए गए स्थान पर लिखिए।';
+  } else {
+    el('subject').value = 'ENGLISH';
+    el('instr').value = 'Read the worksheet carefully.\nWrite the answers in the space provided.';
+  }
+  el('grade').value = 'II';
   el('title').value = hindi() ? 'अभ्यास कार्यपत्रक-2' : 'APPRAISAL WORKSHEET-2';
   el('duration').value = hindi() ? '40 मिनट' : '40 Minutes';
   el('max').value = '20';
