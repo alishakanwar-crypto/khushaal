@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Question Paper Maker — PP International School</title>
+<meta name="description" content="Type or paste a question paper, check it for errors, and print it as a PDF on the school letterhead.">
+<meta name="theme-color" content="#C8202E">
+<style>
+  :root{--ink:#16233A;--soft:#4A5871;--paper:#F6F7FA;--rule:#D9DFE9;--red:#C8202E;
+        --wash:#FDECEE;--good:#1E7A4B;--goodwash:#EAF6EF;--warn:#8A5A00;--warnwash:#FDF4E3}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Roboto,-apple-system,Helvetica,Arial,sans-serif;background:var(--paper);
+       color:var(--ink);line-height:1.5;padding:20px}
+  .wrap{max-width:1200px;margin:0 auto}
+  .top{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+  .top img{height:34px}
+  h1{font-family:Georgia,serif;font-size:26px;font-weight:400}
+  .sub{color:var(--soft);font-size:14px;margin-bottom:18px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  @media (max-width:1000px){.cols{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:18px}
+  h2{font-family:Georgia,serif;font-size:17px;font-weight:400;margin-bottom:12px}
+  label{display:block;font-size:12px;font-weight:600;color:var(--soft);margin-bottom:4px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row>.f{flex:1;min-width:120px}
+  .f{margin-bottom:12px}
+  input,select,textarea{width:100%;padding:9px 11px;font-size:14px;font-family:inherit;border:1px solid var(--rule);
+       border-radius:4px;background:#fff;color:var(--ink)}
+  textarea{font-family:"Courier New",monospace;font-size:13px;line-height:1.6;min-height:340px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--red);outline-offset:1px;border-color:var(--red)}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:4px;font-weight:600}
+  .btn{background:var(--ink);color:#fff;padding:11px 22px;font-size:14px}
+  .btn:hover{background:#0D1727}
+  .btn-red{background:var(--red)} .btn-red:hover{background:#A5101C}
+  .btn-ghost{background:#fff;color:var(--soft);border:1px solid var(--rule);padding:9px 16px;font-size:13px}
+  .btn-ghost:hover{border-color:var(--soft);color:var(--ink)}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .hint{font-size:12px;color:var(--soft);margin-top:8px}
+  .hint code{background:#EEF1F6;padding:1px 4px;border-radius:3px;font-size:12px}
+  .issues{margin-top:14px;display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}
+  .iss{border:1px solid var(--rule);border-left-width:4px;border-radius:4px;padding:8px 10px;font-size:13px;background:#fff}
+  .iss.err{border-left-color:var(--red);background:var(--wash)}
+  .iss.warn{border-left-color:#E0A81E;background:var(--warnwash)}
+  .iss .where{font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+  .iss .fixable{float:right;font-size:11px;color:var(--good);font-weight:700}
+  .ok{border:1px solid #BEE3CE;background:var(--goodwash);color:var(--good);padding:10px 12px;
+      border-radius:4px;font-size:13px;font-weight:600;margin-top:14px}
+  .count{font-size:12px;color:var(--soft);margin-top:10px}
+  .chk{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--soft);margin-bottom:8px}
+  .chk input{width:auto}
+
+  /* ---------- the printable paper ---------- */
+  .sheet{background:#fff;width:210mm;min-height:297mm;padding:16mm 18mm;margin:0 auto;
+         box-shadow:0 1px 6px rgba(22,35,58,.14);font-family:"Times New Roman",Times,serif;
+         color:#000;font-size:12pt;line-height:1.45}
+  .scale{overflow:auto}
+  .head{text-align:center;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:10px}
+  .head img{height:15mm;margin-bottom:4px}
+  .head .school{font-size:13pt;letter-spacing:.04em;font-weight:bold;text-transform:uppercase}
+  .head .exam{font-size:12pt;margin-top:2px}
+  .head .cls{font-size:12pt;font-weight:bold;margin-top:2px}
+  .meta{display:flex;justify-content:space-between;font-size:11pt;margin-bottom:6px}
+  .names{display:flex;justify-content:space-between;font-size:11pt;margin:8px 0 10px;gap:14px}
+  .names span{flex:1;border-bottom:1px dotted #000;white-space:nowrap}
+  .instr{border:1px solid #000;padding:6px 9px;font-size:10.5pt;margin-bottom:12px}
+  .instr b{display:block;margin-bottom:2px}
+  .instr ol{margin:0 0 0 16px}
+  .sec{text-align:center;font-weight:bold;text-decoration:underline;margin:14px 0 8px;font-size:12pt}
+  .q{display:flex;gap:8px;margin-bottom:7px;page-break-inside:avoid}
+  .q .n{min-width:9mm;font-weight:bold}
+  .q .t{flex:1}
+  .q .m{min-width:14mm;text-align:right;white-space:nowrap}
+  .sub2{margin-left:9mm;display:flex;gap:8px;margin-bottom:4px;page-break-inside:avoid}
+  .sub2 .n{min-width:8mm}
+  .sub2 .t{flex:1}
+  .sub2 .m{min-width:14mm;text-align:right;white-space:nowrap}
+  .plain{margin:4px 0}
+  .end{text-align:center;margin-top:12px;font-weight:bold;letter-spacing:.1em}
+  .foot{text-align:center;font-size:8.5pt;margin-top:2px;color:#333}
+  .instr{margin-bottom:10px}
+
+  @media print{
+    body{background:#fff;padding:0}
+    .noprint{display:none !important}
+    .sheet{width:auto;min-height:0;box-shadow:none;margin:0;padding:0}
+    /* the footer repeats at the foot of every printed page instead of pushing a blank page */
+    .foot{position:fixed;bottom:0;left:0;right:0;margin:0}
+    @page{size:A4;margin:14mm 15mm 12mm}
+  }
+</style>
+</head>
+<body>
+<div class="wrap noprint">
+  <div class="top"><img src="ppis-logo.png" alt="PP International School"><h1>Question Paper Maker</h1></div>
+  <p class="sub">Type or paste the paper, press <b>Check for errors</b>, then <b>Save as PDF</b>. Everything stays on this
+     computer — nothing is uploaded.</p>
+
+  <div class="cols">
+    <div class="card">
+      <h2>1 &nbsp;Paper details</h2>
+      <div class="row">
+        <div class="f"><label>Examination</label><input id="exam" value="Periodic Test 1"></div>
+        <div class="f"><label>Session</label><input id="session" value="2026-27"></div>
+      </div>
+      <div class="row">
+        <div class="f"><label>Class</label><input id="cls" placeholder="V" value="V"></div>
+        <div class="f"><label>Subject</label><input id="subject" value="English"></div>
+        <div class="f"><label>Set</label><input id="set" placeholder="optional"></div>
+      </div>
+      <div class="row">
+        <div class="f"><label>Date</label><input id="date" placeholder="12 August 2026"></div>
+        <div class="f"><label>Time allowed</label><input id="time" value="1 hour 30 minutes"></div>
+        <div class="f"><label>Maximum marks</label><input id="max" value="40"></div>
+      </div>
+      <div class="f"><label>General instructions (one per line, leave empty to hide)</label>
+        <textarea id="instr" style="min-height:92px">All questions are compulsory.
+Read each question carefully before answering.
+Write neatly and in your own words.
+Marks are shown against each question.</textarea></div>
+      <div class="chk"><input type="checkbox" id="showNames" checked><label for="showNames" style="margin:0">Print Name / Roll No. / Section lines for the child</label></div>
+      <div class="chk"><input type="checkbox" id="showEnd" checked><label for="showEnd" style="margin:0">Print "ALL THE BEST" at the end</label></div>
+
+      <h2 style="margin-top:20px">2 &nbsp;Questions</h2>
+      <textarea id="body" spellcheck="true"></textarea>
+      <p class="hint">How to type it: <code>SECTION A – Reading (10 marks)</code> for a section heading ·
+        <code>1.</code> or <code>Q1.</code> to start a question · <code>(a)</code> / <code>(i)</code> for parts ·
+        put the marks at the end in brackets like <code>[2]</code> or <code>(2 marks)</code> · a blank line leaves a gap.</p>
+      <div class="bar">
+        <button class="btn btn-ghost" id="sample">Load a sample paper</button>
+        <button class="btn btn-ghost" id="clear">Clear</button>
+        <span class="count" id="count"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3 &nbsp;Check &amp; print</h2>
+      <div class="bar" style="margin-top:0">
+        <button class="btn" id="check">Check for errors</button>
+        <button class="btn btn-ghost" id="fix">Fix the mechanical ones</button>
+        <button class="btn btn-red" id="print">Save as PDF</button>
+      </div>
+      <div class="chk" style="margin-top:12px"><input type="checkbox" id="british" checked>
+        <label for="british" style="margin:0">Flag American spellings (colour, practise, organise …)</label></div>
+      <div id="report"></div>
+      <p class="hint"><b>Save as PDF:</b> the print window opens — choose <i>Destination: Save as PDF</i>, paper size A4,
+        and switch <i>Headers and footers</i> off. To print copies for the class, choose the printer instead.</p>
+      <p class="hint">The checker catches mechanical and structural mistakes — spacing, punctuation, numbering, marks
+        that do not add up, repeated questions, common misspellings. It is not a substitute for reading the paper: it
+        cannot tell you that an answer is wrong or a question is unfair.</p>
+    </div>
+  </div>
+
+  <h2 style="margin:22px 0 10px">4 &nbsp;Preview</h2>
+</div>
+
+<div class="scale"><div class="sheet" id="sheet"></div></div>
+
+<script>
+/* ------------------------------------------------------------------ storage */
+var KEY = 'ppis-paper-maker-v1';
+var FIELDS = ['exam','session','cls','subject','set','date','time','max','instr','body'];
+var CHECKS = ['showNames','showEnd','british'];
+
+function el(id){ return document.getElementById(id); }
+
+function save(){
+  var d = {};
+  FIELDS.forEach(function(f){ d[f] = el(f).value; });
+  CHECKS.forEach(function(f){ d[f] = el(f).checked; });
+  try { localStorage.setItem(KEY, JSON.stringify(d)); } catch(e){}
+}
+function load(){
+  var raw = null;
+  try { raw = localStorage.getItem(KEY); } catch(e){}
+  if(!raw) return false;
+  var d;
+  try { d = JSON.parse(raw); } catch(e){ return false; }
+  FIELDS.forEach(function(f){ if(typeof d[f] === 'string') el(f).value = d[f]; });
+  CHECKS.forEach(function(f){ if(typeof d[f] === 'boolean') el(f).checked = d[f]; });
+  return true;
+}
+
+/* ------------------------------------------------------------------ parsing */
+var SEC_RE   = /^\s*(section|part)\b/i;
+var NUM_RE   = /^\s*(?:Q\s*\.?\s*)?(\d+)\s*[.)]\s*(.*)$/i;
+var SUB_RE   = /^\s*\(?([a-z]|i{1,3}v?|iv|vi{0,3}|ix|x)\)\s*[.)]?\s+(.*)$/i;
+var MARK_RE  = /[\[(]\s*(\d+(?:\.\d+)?)\s*(?:marks?|m)?\s*[\])]\s*$/i;
+
+function splitMarks(text){
+  var m = text.match(MARK_RE);
+  if(!m) return { text: text.trim(), marks: null };
+  return { text: text.slice(0, m.index).trim(), marks: parseFloat(m[1]) };
+}
+
+function parse(src){
+  var out = [];
+  src.split(/\r?\n/).forEach(function(line, i){
+    var raw = line;
+    var t = line.trim();
+    if(!t){ out.push({ kind:'blank', line:i+1, raw:raw }); return; }
+    if(SEC_RE.test(t)){ out.push({ kind:'section', text:t, line:i+1, raw:raw }); return; }
+    var n = t.match(NUM_RE);
+    if(n){
+      var s = splitMarks(n[2]);
+      out.push({ kind:'q', num:parseInt(n[1],10), text:s.text, marks:s.marks, line:i+1, raw:raw });
+      return;
+    }
+    var b = t.match(SUB_RE);
+    if(b && b[2]){
+      var s2 = splitMarks(b[2]);
+      out.push({ kind:'sub', label:b[1], text:s2.text, marks:s2.marks, line:i+1, raw:raw });
+      return;
+    }
+    var s3 = splitMarks(t);
+    out.push({ kind:'plain', text:s3.text, marks:s3.marks, line:i+1, raw:raw });
+  });
+  return out;
+}
+
+/* ------------------------------------------------------------------ preview */
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function markText(m){ return m === null ? '' : (m === 1 ? '1' : String(m)); }
+
+function render(){
+  var items = parse(el('body').value);
+  var h = '';
+
+  h += '<div class="head">';
+  h += '<img src="ppis-logo.png" alt="PP International School">';
+  h += '<div class="school">P. P. International School</div>';
+  var exam = el('exam').value.trim(), ses = el('session').value.trim();
+  if(exam || ses) h += '<div class="exam">' + esc(exam) + (exam && ses ? ' &nbsp;·&nbsp; ' : '') + esc(ses) + '</div>';
+  var cls = el('cls').value.trim(), sub = el('subject').value.trim(), set = el('set').value.trim();
+  var line = [];
+  if(cls) line.push('Class ' + cls);
+  if(sub) line.push(sub);
+  if(set) line.push('Set ' + set);
+  if(line.length) h += '<div class="cls">' + esc(line.join(' &nbsp;|&nbsp; ')).replace(/&amp;nbsp;/g,'&nbsp;') + '</div>';
+  h += '</div>';
+
+  var d = el('date').value.trim(), tm = el('time').value.trim(), mx = el('max').value.trim();
+  h += '<div class="meta"><div>' + (d ? 'Date: ' + esc(d) : '') + '</div>';
+  h += '<div>' + (tm ? 'Time: ' + esc(tm) : '') + '</div>';
+  h += '<div>' + (mx ? 'Maximum marks: ' + esc(mx) : '') + '</div></div>';
+
+  if(el('showNames').checked){
+    h += '<div class="names"><span>Name: </span><span>Roll No.: </span><span>Section: </span></div>';
+  }
+
+  var ins = el('instr').value.split(/\r?\n/).filter(function(x){ return x.trim(); });
+  if(ins.length){
+    h += '<div class="instr"><b>General instructions</b><ol>';
+    ins.forEach(function(x){ h += '<li>' + esc(x.trim()) + '</li>'; });
+    h += '</ol></div>';
+  }
+
+  items.forEach(function(it){
+    if(it.kind === 'blank'){ h += '<div style="height:6px"></div>'; return; }
+    if(it.kind === 'section'){ h += '<div class="sec">' + esc(it.text) + '</div>'; return; }
+    if(it.kind === 'q'){
+      h += '<div class="q"><div class="n">' + it.num + '.</div><div class="t">' + esc(it.text) +
+           '</div><div class="m">' + markText(it.marks) + '</div></div>';
+      return;
+    }
+    if(it.kind === 'sub'){
+      h += '<div class="sub2"><div class="n">(' + esc(it.label) + ')</div><div class="t">' + esc(it.text) +
+           '</div><div class="m">' + markText(it.marks) + '</div></div>';
+      return;
+    }
+    h += '<div class="plain">' + esc(it.text) + (it.marks !== null ? ' <span style="float:right">' +
+         markText(it.marks) + '</span>' : '') + '</div>';
+  });
+
+  if(el('showEnd').checked) h += '<div class="end">— ALL THE BEST —</div>';
+  h += '<div class="foot">P. P. International School' + (cls ? ' · Class ' + esc(cls) : '') +
+       (sub ? ' · ' + esc(sub) : '') + '</div>';
+
+  el('sheet').innerHTML = h;
+
+  var qs = items.filter(function(i){ return i.kind === 'q'; });
+  var total = items.reduce(function(a,i){ return a + (i.marks || 0); }, 0);
+  el('count').textContent = qs.length + ' question' + (qs.length === 1 ? '' : 's') +
+      ' · marks in the paper: ' + (total || 0);
+}
+
+/* ------------------------------------------------------------------ checking */
+var AMERICAN = {
+  color:'colour', colors:'colours', colored:'coloured', colorful:'colourful', favorite:'favourite',
+  favor:'favour', honor:'honour', honored:'honoured', labor:'labour', neighbor:'neighbour',
+  neighbors:'neighbours', behavior:'behaviour', flavor:'flavour', harbor:'harbour', humor:'humour',
+  rumor:'rumour', odor:'odour', vapor:'vapour', center:'centre', centers:'centres', meter:'metre',
+  meters:'metres', liter:'litre', liters:'litres', theater:'theatre', fiber:'fibre',
+  organize:'organise', organized:'organised', organization:'organisation', realize:'realise',
+  realized:'realised', recognize:'recognise', recognized:'recognised', apologize:'apologise',
+  apologized:'apologised', memorize:'memorise', summarize:'summarise', analyze:'analyse',
+  analyzed:'analysed', analyzing:'analysing', emphasize:'emphasise', criticize:'criticise',
+  civilization:'civilisation', jewelry:'jewellery', gray:'grey', plow:'plough', catalog:'catalogue',
+  dialog:'dialogue', program:'programme', defense:'defence', offense:'offence', license:'licence',
+  traveled:'travelled', traveling:'travelling', canceled:'cancelled', modeling:'modelling',
+  fulfill:'fulfil', enroll:'enrol', skillful:'skilful', willful:'wilful', marvelous:'marvellous',
+  tires:'tyres', tire:'tyre', check:'cheque', aluminum:'aluminium', mold:'mould', practicing:'practising'
+};
+var TYPOS = {
+  teh:'the', recieve:'receive', recieved:'received', seperate:'separate', seperately:'separately',
+  occured:'occurred', occuring:'occurring', definately:'definitely', wich:'which', alot:'a lot',
+  becuase:'because', thier:'their', adress:'address', calender:'calendar', grammer:'grammar',
+  tommorow:'tomorrow', untill:'until', sucess:'success', begining:'beginning', neccessary:'necessary',
+  necesary:'necessary', enviroment:'environment', goverment:'government', truely:'truly',
+  arguement:'argument', judgment:'judgement', publically:'publicly', accomodate:'accommodate',
+  embarass:'embarrass', existance:'existence', independant:'independent', maintainance:'maintenance',
+  occassion:'occasion', posession:'possession', priviledge:'privilege', reccommend:'recommend',
+  refered:'referred', rythm:'rhythm', suprise:'surprise', writting:'writing', wether:'whether',
+  quiz2:'quiz', teacherss:'teachers', childrens:'children', furnitures:'furniture',
+  informations:'information', advices:'advice', equipments:'equipment', homeworks:'homework',
+  discuss_about:'discuss', cousin_brother:'cousin'
+};
+
+function words(text){ return text.match(/[A-Za-z][A-Za-z'’-]*/g) || []; }
+
+function check(){
+  var src = el('body').value;
+  var items = parse(src);
+  var issues = [];
+  function add(sev, line, what, fixable){
+    issues.push({ sev:sev, line:line, what:what, fixable:!!fixable });
+  }
+
+  if(!src.trim()){
+    add('err', null, 'There are no questions yet — type or paste the paper in box 2.', false);
+    return report(issues, items);
+  }
+
+  /* --- line-level mechanical checks --- */
+  items.forEach(function(it){
+    if(it.kind === 'blank') return;
+    var t = it.raw;
+
+    if(/\s+[.,;:?!]/.test(t))          add('err', it.line, 'Space before punctuation — "' + snip(t, /\s+[.,;:?!]/) + '"', true);
+    if(/[.,;:?!][A-Za-z]/.test(t))     add('err', it.line, 'Missing space after punctuation — "' + snip(t, /[.,;:?!][A-Za-z]/) + '"', true);
+    if(/\S {2,}\S/.test(t))            add('err', it.line, 'Two or more spaces in a row', true);
+    if(/['"]/.test(t))                 add('warn', it.line, 'Straight quotes / apostrophes — the rest of a printed paper should use curly ones', true);
+    if(/\s+$/.test(it.raw))            add('warn', it.line, 'Trailing space at the end of the line', true);
+
+    if(it.kind === 'q' || it.kind === 'sub'){
+      var body = it.text;
+      if(body && /^[a-z]/.test(body))  add('err', it.line, 'Question starts with a small letter — "' + body.slice(0,28) + '…"', true);
+      var exercise = /punctuat|capital letter/i.test(body) || (/\(a\)/i.test(body) && /\(b\)/i.test(body));
+      if(body && !exercise && !/[.?!:;]$/.test(body) && !/[-–—_)]$/.test(body))
+                                        add('warn', it.line, 'No full stop or question mark at the end — "…' + body.slice(-26) + '"', false);
+      if(body && /^(what|why|how|when|where|who|whose|do|does|did|is|are|can|will|would)\b/i.test(body) && /\.$/.test(body))
+                                        add('warn', it.line, 'Reads like a question but ends with a full stop — should it be a question mark?', false);
+      if(body && words(body).length > 45)
+                                        add('warn', it.line, 'Very long question (' + words(body).length + ' words) — consider splitting it', false);
+      if(/\bfill in the blank/i.test(body) && !/_/.test(body))
+                                        add('warn', it.line, '"Fill in the blank" but there is no blank (____) on the line', false);
+    }
+
+    var spellQ = isSpellingLine(t);
+    var ws = words(t);
+    ws.forEach(function(w){
+      var low = w.toLowerCase();
+      if(TYPOS[low])
+        add(spellQ ? 'warn' : 'err', it.line, 'Misspelling: "' + w + '" → "' + TYPOS[low] + '"' +
+            (spellQ ? ' — left alone, this line looks like a spelling question' : ''), !spellQ);
+      else if(el('british').checked && AMERICAN[low])
+        add('warn', it.line, 'American spelling: "' + w + '" → "' + AMERICAN[low] + '"' +
+            (spellQ ? ' — left alone, this line looks like a spelling question' : ''), !spellQ);
+    });
+
+    /* MCQ options */
+    if(/\(a\)/i.test(t) && /\(b\)/i.test(t)){
+      var opts = (t.match(/\([a-d]\)/gi) || []).length;
+      if(opts !== 4)                    add('warn', it.line, 'Multiple-choice question with ' + opts + ' options instead of 4', false);
+    }
+  });
+
+  /* --- numbering --- */
+  var qs = items.filter(function(i){ return i.kind === 'q'; });
+  var seen = {};
+  var expect = null;
+  qs.forEach(function(q){
+    if(seen[q.num] !== undefined) add('err', q.line, 'Question number ' + q.num + ' is used twice (also on line ' + seen[q.num] + ')', false);
+    else seen[q.num] = q.line;
+    if(expect !== null && q.num !== expect)
+      add('err', q.line, 'Numbering jumps: ' + (q.num > expect ? 'question ' + expect + ' is missing' : 'goes back to ' + q.num) + ' (found ' + q.num + ', expected ' + expect + ')', false);
+    expect = q.num + 1;
+  });
+  if(qs.length && /^Q/i.test(qs[0].raw.trim())){
+    var mixed = qs.some(function(q){ return !/^Q/i.test(q.raw.trim()); });
+    if(mixed) add('warn', null, 'Question numbers are written both as "Q1." and "1." — pick one style', false);
+  }
+
+  /* --- marks --- */
+  var withM = qs.filter(function(q){ return q.marks !== null; });
+  var without = qs.filter(function(q){ return q.marks === null && !partsCarryMarks(items, q); });
+  if(qs.length && without.length && withM.length)
+    add('err', without[0].line, without.length + ' question' + (without.length === 1 ? ' has' : 's have') +
+        ' no marks in brackets (first one on line ' + without[0].line + ')', false);
+  var total = items.reduce(function(a,i){ return a + (i.marks || 0); }, 0);
+  var mx = parseFloat(el('max').value);
+  if(!isNaN(mx) && total){
+    if(Math.abs(total - mx) > 0.001)
+      add('err', null, 'Marks do not add up: the questions total ' + total + ' but "Maximum marks" says ' + mx, false);
+  }
+  /* section-wise totals stated in a heading */
+  items.filter(function(i){ return i.kind === 'section'; }).forEach(function(s, idx, arr){
+    var m = s.text.match(/(\d+)\s*marks/i);
+    if(!m) return;
+    var stated = parseFloat(m[1]);
+    var from = items.indexOf(s), to = items.length;
+    for(var j = from + 1; j < items.length; j++){ if(items[j].kind === 'section'){ to = j; break; } }
+    var got = 0;
+    for(var k = from + 1; k < to; k++) got += (items[k].marks || 0);
+    if(got && Math.abs(got - stated) > 0.001)
+      add('err', s.line, '"' + s.text.slice(0,42) + '" says ' + stated + ' marks but its questions total ' + got, false);
+  });
+
+  /* --- repeated questions --- */
+  var norm = {};
+  qs.concat(items.filter(function(i){ return i.kind === 'sub'; })).forEach(function(q){
+    if(!q.text) return;
+    var k = q.text.toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+    if(k.length < 12) return;
+    if(norm[k] !== undefined) add('err', q.line, 'Same question appears twice (also on line ' + norm[k] + ')', false);
+    else norm[k] = q.line;
+  });
+
+  /* --- paper-level --- */
+  if(!qs.length) add('warn', null, 'No numbered questions found — start each question with "1." or "Q1."', false);
+  if(!el('cls').value.trim())     add('warn', null, 'Class is empty in the paper details', false);
+  if(!el('subject').value.trim()) add('warn', null, 'Subject is empty in the paper details', false);
+  if(!el('max').value.trim())     add('warn', null, 'Maximum marks is empty in the paper details', false);
+  if(!el('time').value.trim())    add('warn', null, 'Time allowed is empty in the paper details', false);
+
+  report(issues, items);
+}
+
+/* a question whose own marks sit on its (a)/(b)/(c) parts instead */
+function partsCarryMarks(items, q){
+  var i = items.indexOf(q), any = false;
+  for(var j = i + 1; j < items.length; j++){
+    if(items[j].kind === 'sub'){ if(items[j].marks !== null) any = true; continue; }
+    if(items[j].kind === 'blank') continue;
+    break;
+  }
+  return any;
+}
+
+/* "Choose the correct spelling" style lines hold deliberate misspellings */
+function isSpellingLine(t){
+  return /\bspell(ing|ings|ed)?\b/i.test(t) || /\bcorrectly spelt\b/i.test(t);
+}
+
+function snip(t, re){
+  var m = t.match(re);
+  if(!m) return t.slice(0,24);
+  var i = Math.max(0, m.index - 12);
+  return (i ? '…' : '') + t.slice(i, m.index + 14).trim() + '…';
+}
+
+function report(issues, items){
+  var errs = issues.filter(function(i){ return i.sev === 'err'; }).length;
+  var warns = issues.length - errs;
+  var h = '';
+  if(!issues.length){
+    h = '<div class="ok">No errors found. ' +
+        items.filter(function(i){ return i.kind === 'q'; }).length + ' questions checked.</div>';
+  } else {
+    h = '<p class="count"><b>' + errs + '</b> to fix · <b>' + warns + '</b> to look at</p><div class="issues">';
+    issues.sort(function(a,b){ return (a.sev === b.sev ? (a.line || 0) - (b.line || 0) : (a.sev === 'err' ? -1 : 1)); });
+    issues.forEach(function(i){
+      h += '<div class="iss ' + i.sev + '">' + (i.fixable ? '<span class="fixable">auto-fixable</span>' : '') +
+           '<span class="where">' + (i.line ? 'Line ' + i.line : 'Paper') + '</span> ' + esc(i.what) + '</div>';
+    });
+    h += '</div>';
+  }
+  el('report').innerHTML = h;
+}
+
+/* ------------------------------------------------------------------ auto-fix */
+function autofix(){
+  var lines = el('body').value.split(/\r?\n/).map(function(line){
+    var t = line;
+    var keepWords = isSpellingLine(t);
+    t = t.replace(/[ \t]+$/, '');
+    t = t.replace(/\s+([.,;:?!])/g, '$1');
+    t = t.replace(/([.,;:?!])([A-Za-z])/g, '$1 $2');
+    t = t.replace(/(\S) {2,}(\S)/g, '$1 $2');
+    t = t.replace(/\b([A-Za-z]+)'([A-Za-z])/g, '$1\u2019$2');
+    t = t.replace(/"([^"]*)"/g, '\u201C$1\u201D');
+    t = t.replace(/'/g, '\u2019');
+    /* misspellings + American spellings, keeping the original capitalisation */
+    if(!keepWords) t = t.replace(/[A-Za-z][A-Za-z'’-]*/g, function(w){
+      var low = w.toLowerCase();
+      var to = TYPOS[low] || (el('british').checked ? AMERICAN[low] : null);
+      if(!to) return w;
+      if(w[0] === w[0].toUpperCase()) return to[0].toUpperCase() + to.slice(1);
+      return to;
+    });
+    /* capitalise the first letter of a question or part */
+    var m = t.match(NUM_RE) || t.match(SUB_RE);
+    if(m && m[2] && /^[a-z]/.test(m[2])){
+      var at = t.indexOf(m[2]);
+      t = t.slice(0, at) + m[2][0].toUpperCase() + t.slice(at + 1);
+    }
+    return t;
+  });
+  el('body').value = lines.join('\n');
+  save(); render(); check();
+}
+
+/* ------------------------------------------------------------------ sample */
+var SAMPLE = [
+  'SECTION A – Reading (10 marks)',
+  '',
+  '1. Read the passage given below and answer the questions that follow.',
+  '(a) Why did the farmer decide to sell his cow? [1]',
+  '(b) What did the old woman offer him instead of money? [2]',
+  '(c) Give a suitable title to the passage. [2]',
+  '2. Pick out one word from the passage that means "very happy". [2]',
+  '3. Write the opposite of the following words: brave, ancient, gather. [3]',
+  '',
+  'SECTION B – Writing (12 marks)',
+  '',
+  '4. Write a letter to your class teacher asking for two days leave. [6]',
+  '5. Write a paragraph of about 80 words on "A Rainy Day at School". [6]',
+  '',
+  'SECTION C – Grammar (18 marks)',
+  '',
+  '6. Fill in the blanks with the correct form of the verb: She ____ (go) to the library every Saturday. [2]',
+  '7. Rewrite the sentence using the past tense: The children play in the garden. [2]',
+  '8. Choose the correct spelling: (a) neccessary (b) necessary (c) necesary (d) necessery [2]',
+  '9. Join the sentences using because: It was raining. We stayed indoors. [2]',
+  '10. Punctuate the following sentence: where is my new pencil box asked riya [4]',
+  '11. Change into plural: leaf, knife, child. [3]',
+  '12. Use the following words in sentences of your own: gather, silently, proud. [3]'
+].join('\n');
+
+/* ------------------------------------------------------------------ wire up */
+FIELDS.forEach(function(f){ el(f).addEventListener('input', function(){ save(); render(); }); });
+CHECKS.forEach(function(f){ el(f).addEventListener('change', function(){ save(); render(); }); });
+el('check').addEventListener('click', check);
+el('fix').addEventListener('click', autofix);
+el('print').addEventListener('click', function(){ window.print(); });
+el('sample').addEventListener('click', function(){ el('body').value = SAMPLE; save(); render(); check(); });
+el('clear').addEventListener('click', function(){
+  if(!confirm('Clear the questions? The paper details stay as they are.')) return;
+  el('body').value = ''; save(); render(); el('report').innerHTML = '';
+});
+
+if(!load() || !el('body').value.trim()) el('body').value = SAMPLE;
+render();
+</script>
+</body>
+</html>
